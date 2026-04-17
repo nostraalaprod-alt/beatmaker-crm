@@ -18,135 +18,103 @@ with st.sidebar:
     st.header("📂 Importation")
     uploaded_file = st.file_uploader("Upload ton CRM (CSV ou Excel)", type=["xlsx", "csv"])
     
-    st.header("⚙️ Statut Configuration")
     if API_KEY and SENDER_EMAIL:
-        st.success("✅ API SendGrid configurée")
+        st.success("✅ Configuration OK")
     else:
-        st.error("❌ Clé API ou Email manquant dans les Secrets")
+        st.error("❌ Configuration incomplète (Secrets)")
 
-# --- CHARGEMENT ET TRAITEMENT DES DONNÉES ---
+# --- CHARGEMENT ET TRAITEMENT ---
 if uploaded_file:
     try:
-        # Lecture du fichier
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
+        # Lecture
+        df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
         
-        # Nettoyage des colonnes (enlève les espaces et uniformise)
+        # Nettoyage des colonnes
         df.columns = [c.strip() for c in df.columns]
         
-        # Vérification des colonnes obligatoires
-        required_cols = ['Nom', 'Mail', 'Lien']
-        missing_cols = [c for c in required_cols if c not in df.columns]
-        
-        if missing_cols:
-            st.error(f"Il manque des colonnes dans ton fichier : {', '.join(missing_cols)}")
+        # Mapping intelligent (pour gérer Mail/Email/Lien/Mega)
+        rename_dict = {}
+        for col in df.columns:
+            c_low = col.lower()
+            if c_low in ['mail', 'email', 'e-mail']: rename_dict[col] = 'Mail'
+            if c_low in ['lien', 'link', 'mega', 'lien mega']: rename_dict[col] = 'Lien'
+            if c_low in ['nom', 'name', 'artiste']: rename_dict[col] = 'Nom'
+            if c_low in ['instagram', 'insta']: rename_dict[col] = 'Instagram'
+            if c_low in ['style', 'vibe']: rename_dict[col] = 'Style'
+        df.rename(columns=rename_dict, inplace=True)
+
+        if 'Mail' not in df.columns or 'Lien' not in df.columns or 'Nom' not in df.columns:
+            st.error("⚠️ Il manque des colonnes essentielles (Nom, Mail, Lien) dans ton fichier.")
         else:
             st.sidebar.success(f"💎 {len(df)} contacts chargés")
 
-            # --- FILTRES ---
+            # --- SÉLECTION ---
             st.subheader("🚀 1. Sélectionne tes cibles")
-            
             col1, col2 = st.columns(2)
             
             with col1:
-                if 'Style' in df.columns:
-                    styles = df['Style'].unique().tolist()
-                    selected_styles = st.multiselect("Filtrer par Style", styles)
-                    if selected_styles:
-                        df = df[df['Style'].isin(selected_styles)]
+                styles = df['Style'].unique().tolist() if 'Style' in df.columns else []
+                sel_styles = st.multiselect("Filtrer par Style", styles)
+                if sel_styles:
+                    df = df[df['Style'].isin(sel_styles)]
 
             with col2:
-                selected_names = st.multiselect(
-                    "Artistes à contacter", 
-                    options=df['Nom'].tolist(),
-                    default=df['Nom'].tolist() if len(df) < 5 else []
-                )
+                selected_names = st.multiselect("Artistes à contacter", options=df['Nom'].tolist())
 
             final_selection = df[df['Nom'].isin(selected_names)]
 
             if not final_selection.empty:
-                st.write(f"Selection : **{len(final_selection)} artiste(s)**")
+                # --- TEMPLATES ---
+                templates = {
+                    "🎯 Premier Contact": {
+                        "sujet": "Pack Exclu - [Ton Nom] x {nom}",
+                        "corps": "Salut {nom},\n\nJ'ai vu ce que tu fais sur Instagram ({instagram}), j'aime beaucoup l'énergie.\n\nJ'ai préparé un pack {style} spécifiquement pour toi.\n\nTu peux écouter les exclus ici : {lien}\n\nDis-moi si quelque chose te parle !"
+                    },
+                    "🔥 Relance": {
+                        "sujet": "Petit rappel / Pack {style}",
+                        "corps": "Yo {nom},\n\nJe te relance juste pour savoir si tu avais eu le temps de jeter une oreille au pack.\n\nLe lien est ici : {lien}"
+                    }
+                }
+
+                st.divider()
+                st.subheader("📧 2. Rédige ton message")
                 
-                st.markdown("---")
-                st.subheader("📧 2. Rédige ton message personnalisé")
+                choix_t = st.selectbox("Choisir un modèle", list(templates.keys()))
+                sel_t = templates[choix_t]
                 
-              # --- DICTIONNAIRE DE TEMPLATES ---
-        templates = {
-            "🎯 Premier Contact (Pro)": {
-                "sujet": "Pack Exclu - [Ton Nom] x {nom}",
-                "corps": "Salut {nom},\n\nJ'ai vu ce que tu fais sur Instagram ({instagram}), j'aime beaucoup l'énergie.\n\nJ'ai préparé un pack {style} spécifiquement pour toi.\n\nTu peux écouter les exclus ici : {lien}\n\nDis-moi si quelque chose te parle !"
-            },
-            "🔥 Relance (Rapide)": {
-                "sujet": "Petit rappel / Pack {style}",
-                "corps": "Yo {nom},\n\nJe te relance juste pour savoir si tu avais eu le temps de jeter une oreille au pack que je t'ai envoyé.\n\nLe lien est toujours ici : {lien}\n\nBonne session !"
-            },
-            "🎤 Spécial Studio (Urgent)": {
-                "sujet": "Exclu pour ta session d'aujourd'hui",
-                "corps": "Salut {nom},\n\nJe t'envoie ça en direct du studio. Je pense que ce pack {style} va coller direct à ta vibe du moment.\n\nÉcoute ça : {lien}\n\nFais-moi signe si tu poses dessus !"
-            }
-        }
+                subject = st.text_input("Objet", value=sel_t["sujet"])
+                email_body = st.text_area("Message", value=sel_t["corps"], height=200)
+                
+                st.info("💡 Utilise {nom}, {instagram}, {style} ou {lien} pour personnaliser.")
 
-        st.divider()
-        st.subheader("📧 2. Rédige ton message personnalisé")
-
-        # Menu déroulant pour choisir le template
-        choix_template = st.selectbox("Choisir un modèle de message", list(templates.keys()))
-        selected_t = templates[choix_template]
-
-        # Champs de saisie
-        subject = st.text_input("Objet de l'email", value=selected_t["sujet"])
-        email_body = st.text_area("Message", value=selected_t["corps"], height=250)
-
-        st.info("💡 **Astuces :** Les balises `{nom}`, `{instagram}`, `{style}` et `{lien}` seront remplacées automatiquement.")
-                st.info("💡 **Astuces :** Utilise `{nom}`, `{instagram}`, `{style}` ou `{lien}` pour que le code les remplace automatiquement par les infos de ton tableau.")
-
-                # --- BOUTON D'ENVOI ---
+                # --- ENVOI ---
                 if st.button(f"🔥 ENVOYER À {len(final_selection)} ARTISTES"):
-                    if not API_KEY or not SENDER_EMAIL:
-                        st.error("Erreur : La configuration SendGrid est incomplète.")
-                    else:
-                        sg = SendGridAPIClient(API_KEY)
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
-                        
-                        success_count = 0
-                        error_count = 0
-
-                        for i, (idx, row) in enumerate(final_selection.iterrows()):
-                            try:
-                                # Remplacement dynamique des balises
-                                # On utilise .get() pour éviter les erreurs si une colonne est vide
-                                formatted_msg = email_body.format(
-                                    nom=str(row.get('Nom', '')),
-                                    instagram=str(row.get('Instagram', '')),
-                                    style=str(row.get('Style', '')),
-                                    lien=str(row.get('Lien', ''))
-                                )
-
-                                message = Mail(
-                                    from_email=SENDER_EMAIL,
-                                    to_emails=str(row.get('Mail', '')),
-                                    subject=subject,
-                                    plain_text_content=formatted_msg
-                                )
-
-                                sg.send(message)
-                                success_count += 1
-                                
-                            except Exception as e:
-                                st.error(f"Erreur pour {row['Nom']} : {e}")
-                                error_count += 1
+                    sg = SendGridAPIClient(API_KEY)
+                    for i, (idx, row) in enumerate(final_selection.iterrows()):
+                        try:
+                            # Remplacement des balises
+                            msg_final = email_body.format(
+                                nom=str(row.get('Nom', '')),
+                                instagram=str(row.get('Instagram', '')),
+                                style=str(row.get('Style', '')),
+                                lien=str(row.get('Lien', ''))
+                            )
                             
-                            # Mise à jour barre de progression
-                            progress_bar.progress((i + 1) / len(final_selection))
-                            status_text.text(f"Envoi en cours : {i+1}/{len(final_selection)}")
-
-                        st.success(f"✅ Terminé ! {success_count} mails envoyés, {error_count} erreur(s).")
-                        st.balloons()
+                            mail = Mail(
+                                from_email=SENDER_EMAIL,
+                                to_emails=str(row['Mail']),
+                                subject=subject.format(nom=row['Nom'], style=row.get('Style','')),
+                                plain_text_content=msg_final
+                            )
+                            sg.send(mail)
+                            st.write(f"✅ Envoyé à {row['Nom']}")
+                        except Exception as e:
+                            st.error(f"❌ Erreur pour {row['Nom']} : {e}")
+                    st.balloons()
             else:
-                st.warning("Choisis au moins un artiste dans la liste pour continuer.")
+                st.warning("Sélectionne au moins un artiste.")
 
     except Exception as e:
-        st.error(f"Erreur lors de la lecture du fichier : {e}")
+        st.error(f"Erreur fichier : {e}")
+else:
+    st.info("👋 Upload ton fichier pour commencer.")
