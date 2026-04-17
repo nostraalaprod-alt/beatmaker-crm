@@ -34,25 +34,24 @@ if uploaded_file:
             final_df = df[df['Nom'].isin(selected_names)]
 
             if not final_df.empty:
-                # Message
-              # --- NOUVEAU BLOC DE MESSAGES ---
-                st.subheader("📧 2. Configuration du Message")
-
-                # Bibliothèque de templates
+              # --- TES TEMPLATES PERSONNALISÉS ---
                 styles_mail = {
-                    "🎯 Approche Pro": {
-                        "sujet": "Pack Exclu - [Ton Nom] x {nom}",
-                        "corps": "Salut {nom},\n\nJ'aime beaucoup ton énergie, j'ai préparé des prods qui colleraient parfaitement à ton univers.\n\nTu peux écouter les exclus ici : {lien}\n\nDis-moi si une vibe te parle !"
+                    "🔥 Style Direct (Ton préféré)": {
+                        "sujet": "Pour {nom} 🎹",
+                        "corps": "Yo boss,\n\nJ'espère que ça va t'inspirer !!\n\nLien : {lien}\n\nGrosse Force !!"
                     },
-                    "🔥 Approche Directe": {
-                        "sujet": "Prods pour {nom} (Lien MEGA)",
-                        "corps": "Yo {nom},\n\nGros pack de prods préparé pour toi. Écoute ça quand t'as un moment : {lien}\n\nSi tu poses sur un truc, préviens-moi pour les pistes séparées."
-                    },
-                    "⚠️ Approche Studio": {
-                        "sujet": "Exclus pour ta session ({nom})",
-                        "corps": "Salut {nom},\n\nJe t'envoie ça en direct du studio, je viens de les finir et j'ai direct entendu ta voix dessus : {lien}\n\nFais-moi signe si tu bloques une prod !"
+                    "🎤 Style Studio (Rapide)": {
+                        "sujet": "Pack Exclu - {nom}",
+                        "corps": "Yo,\n\nPetit pack de pépites pour tes prochaines sessions.\n\nÉcoute ça : {lien}\n\nGrosse Force !!"
                     }
                 }
+
+                # Menu de choix
+                choix_mood = st.selectbox("Choisir l'ambiance du mail", list(styles_mail.keys()))
+                
+                # Champs de saisie
+                subject = st.text_input("Objet du mail", value=styles_mail[choix_mood]["sujet"])
+                body = st.text_area("Message", value=styles_mail[choix_mood]["corps"], height=150)
 
                 # Menu de choix
                 choix_mood = st.selectbox("Choisir l'ambiance du mail", list(styles_mail.keys()))
