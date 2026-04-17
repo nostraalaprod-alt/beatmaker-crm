@@ -34,37 +34,31 @@ if uploaded_file:
             final_df = df[df['Nom'].isin(selected_names)]
 
             if not final_df.empty:
-              # --- TES TEMPLATES PERSONNALISÉS ---
+                st.divider()
+                st.subheader("📧 2. Message")
+
+                # Tes templates avec ton style "Yo boss"
                 styles_mail = {
-                    "🔥 Style Direct (Ton préféré)": {
+                    "🔥 Style Direct": {
                         "sujet": "Pour {nom} 🎹",
                         "corps": "Yo boss,\n\nJ'espère que ça va t'inspirer !!\n\nLien : {lien}\n\nGrosse Force !!"
                     },
-                    "🎤 Style Studio (Rapide)": {
+                    "🎤 Style Studio": {
                         "sujet": "Pack Exclu - {nom}",
                         "corps": "Yo,\n\nPetit pack de pépites pour tes prochaines sessions.\n\nÉcoute ça : {lien}\n\nGrosse Force !!"
                     }
                 }
 
-                # Menu de choix
-                choix_mood = st.selectbox("Choisir l'ambiance du mail", list(styles_mail.keys()))
+                # AJOUT DE LA KEY UNIQUE ICI POUR ÉVITER L'ERREUR
+                choix_mood = st.selectbox("Choisir l'ambiance", list(styles_mail.keys()), key="menu_ambiance")
                 
-                # Champs de saisie
-                subject = st.text_input("Objet du mail", value=styles_mail[choix_mood]["sujet"])
-                body = st.text_area("Message", value=styles_mail[choix_mood]["corps"], height=150)
-
-                # Menu de choix
-                choix_mood = st.selectbox("Choisir l'ambiance du mail", list(styles_mail.keys()))
-                
-                # Champs de saisie (ils se mettent à jour selon le menu)
-                subject = st.text_input("Objet du mail", value=styles_mail[choix_mood]["sujet"])
+                subject = st.text_input("Objet", value=styles_mail[choix_mood]["sujet"])
                 body = st.text_area("Message", value=styles_mail[choix_mood]["corps"], height=200)
                 
                 if st.button(f"🔥 ENVOYER À {len(final_df)} ARTISTES"):
                     sg = SendGridAPIClient(API_KEY)
                     for _, row in final_df.iterrows():
                         try:
-                            # Personnalisation
                             m_subj = subject.replace("{nom}", str(row['Nom']))
                             m_body = body.replace("{nom}", str(row['Nom'])).replace("{lien}", str(row.get('Lien', '')))
                             
