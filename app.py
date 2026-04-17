@@ -35,9 +35,31 @@ if uploaded_file:
 
             if not final_df.empty:
                 # Message
-                st.subheader("📧 2. Message")
-                subject = st.text_input("Objet", "Pack Exclu pour {nom}")
-                body = st.text_area("Message", "Salut {nom}, voici ton lien : {lien}")
+              # --- NOUVEAU BLOC DE MESSAGES ---
+                st.subheader("📧 2. Configuration du Message")
+
+                # Bibliothèque de templates
+                styles_mail = {
+                    "🎯 Approche Pro": {
+                        "sujet": "Pack Exclu - [Ton Nom] x {nom}",
+                        "corps": "Salut {nom},\n\nJ'aime beaucoup ton énergie, j'ai préparé des prods qui colleraient parfaitement à ton univers.\n\nTu peux écouter les exclus ici : {lien}\n\nDis-moi si une vibe te parle !"
+                    },
+                    "🔥 Approche Directe": {
+                        "sujet": "Prods pour {nom} (Lien MEGA)",
+                        "corps": "Yo {nom},\n\nGros pack de prods préparé pour toi. Écoute ça quand t'as un moment : {lien}\n\nSi tu poses sur un truc, préviens-moi pour les pistes séparées."
+                    },
+                    "⚠️ Approche Studio": {
+                        "sujet": "Exclus pour ta session ({nom})",
+                        "corps": "Salut {nom},\n\nJe t'envoie ça en direct du studio, je viens de les finir et j'ai direct entendu ta voix dessus : {lien}\n\nFais-moi signe si tu bloques une prod !"
+                    }
+                }
+
+                # Menu de choix
+                choix_mood = st.selectbox("Choisir l'ambiance du mail", list(styles_mail.keys()))
+                
+                # Champs de saisie (ils se mettent à jour selon le menu)
+                subject = st.text_input("Objet du mail", value=styles_mail[choix_mood]["sujet"])
+                body = st.text_area("Message", value=styles_mail[choix_mood]["corps"], height=200)
                 
                 if st.button(f"🔥 ENVOYER À {len(final_df)} ARTISTES"):
                     sg = SendGridAPIClient(API_KEY)
