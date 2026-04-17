@@ -30,8 +30,10 @@ if uploaded_file:
         else:
             df = pd.read_excel(uploaded_file)
         
+        # Nettoyage des colonnes (enlève les espaces invisibles)
         df.columns = [c.strip() for c in df.columns]
         
+        # Mapping intelligent des colonnes
         rename_dict = {}
         for col in df.columns:
             c_low = col.lower()
@@ -42,16 +44,19 @@ if uploaded_file:
             if c_low in ['style', 'vibe']: rename_dict[col] = 'Style'
         df.rename(columns=rename_dict, inplace=True)
 
+        # Vérification des colonnes critiques
         if 'Mail' not in df.columns or 'Lien' not in df.columns or 'Nom' not in df.columns:
-            st.error("⚠️ Colonnes 'Nom', 'Mail' et 'Lien' obligatoires.")
+            st.error("⚠️ Ton fichier doit contenir les colonnes : Nom, Mail et Lien.")
+            st.write("Colonnes trouvées :", list(df.columns))
         else:
             st.sidebar.success(f"💎 {len(df)} contacts chargés")
 
+            # --- SÉLECTION DES CIBLES ---
             st.subheader("🚀 1. Sélectionne tes cibles")
             col1, col2 = st.columns(2)
             
             with col1:
-                styles = df['Style'].unique().tolist() if 'Style' in df.columns else []
+                styles = df['Style'].unique().tolist() if 'Style' in df.columns else ["Tous"]
                 sel_styles = st.multiselect("Filtrer par Style", styles)
                 if sel_styles:
                     df = df[df['Style'].isin(sel_styles)]
@@ -62,6 +67,7 @@ if uploaded_file:
             final_selection = df[df['Nom'].isin(selected_names)]
 
             if not final_selection.empty:
+                # --- TEMPLATES ---
                 templates = {
                     "🎯 Premier Contact": {
                         "sujet": "Pack Exclu - [Ton Nom] x {nom}",
@@ -77,44 +83,4 @@ if uploaded_file:
                 st.subheader("📧 2. Rédige ton message")
                 
                 choix_t = st.selectbox("Choisir un modèle", list(templates.keys()))
-                sel_t = templates[choix_t]
-                
-                subject = st.text_input("Objet", value=sel_t["sujet"])
-                email_body = st.text_area("Message", value=sel_t["corps"], height=200)
-                
-                st.info("💡 Utilise {nom}, {instagram}, {style} ou {lien} pour personnaliser.")
-
-                if st.button(f"🔥 ENVOYER À {len(final_selection)} ARTISTES"):
-                    sg = SendGridAPIClient(API_KEY)
-                    progress_bar = st.progress(0)
-                    
-                    for i, (idx, row) in enumerate(final_selection.iterrows()):
-                        try:
-                            dest_email = row.get('Mail')
-                            if not dest_email or pd.isna(dest_email):
-                                st.error(f"❌ Pas d'email pour {row.get('Nom')}")
-                                continue
-
-                            msg_final = email_body.format(
-                                nom=str(row.get('Nom', '')),
-                                instagram=str(row.get('Instagram', '')),
-                                style=str(row.get('Style', '')),
-                                lien=str(row.get('Lien', ''))
-                            )
-                            
-                            subj_final = subject.format(
-                                nom=str(row.get('Nom', '')),
-                                style=str(row.get('Style', ''))
-                            )
-                            
-                            mail = Mail(
-                                from_email=SENDER_EMAIL,
-                                to_emails=str(dest_email),
-                                subject=subj_final,
-                                plain_text_content=msg_final
-                            )
-                            sg.send(mail)
-                            st.write(f"✅ Envoyé à : **{row.get('Nom')}**")
-                            
-                        except Exception as e:
-                            st.error(f"❌ Erreur pour {row.get('Nom')} :
+                sel_t = templates
