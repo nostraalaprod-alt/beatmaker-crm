@@ -84,3 +84,12 @@ if uploaded_file:
                 
                 choix_t = st.selectbox("Choisir un modèle", list(templates.keys()))
                 sel_t = templates
+st.success("Opération terminée !")
+                    st.balloons()
+            else:
+                st.warning("Sélectionne au moins un artiste pour continuer.")
+
+    except Exception as e:
+        st.error(f"Erreur lors de la lecture du fichier : {e}")
+else:
+    st.info("👋 Upload ton fichier Excel pour commencer la révolution.")
