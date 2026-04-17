@@ -59,6 +59,13 @@ if contacts_df is not None:
                                   "Salut {nom},\n\nJ'ai bossé sur des prods qui collent à ton univers. Dis-moi ce que t'en penses !")
     
     uploaded_prods = st.file_uploader("Ajouter tes prods (ZIP/MP3)", accept_multiple_files=True)
+    # --- PRÉCOUTE DES PRODS ---
+    if uploaded_prods:
+        st.write("🎵 **Préécoute de tes prods :**")
+        for p in uploaded_prods:
+            if p.type.startswith('audio'):
+                with st.expander(f"Écouter : {p.name}"):
+                    st.audio(p)
 
     if st.button(f"🔥 Envoyer à {len(selected_contacts)} rappeurs"):
         if not api_key or not sender_email:
