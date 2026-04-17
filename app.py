@@ -98,4 +98,4 @@ if uploaded_file:
                             # Sécurité Email
                             dest_email = row.get('Mail')
                             
-                            if not dest_email or pd.isna(dest_email
+                          if not dest_email or pd.isna(dest_email):
