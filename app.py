@@ -3,36 +3,37 @@ import pandas as pd
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
-# Configuration de la page
+# 1. Configuration de la page
 st.set_page_config(page_title="Beatmaker CRM Pro", page_icon="🎹", layout="wide")
 
 st.title("🎹 Beatmaker Bulk Link Sender")
 st.markdown("---")
 
-# --- RÉCUPÉRATION DES SECRETS ---
+# 2. Récupération des secrets
 API_KEY = st.secrets.get("SENDGRID_API_KEY", "")
 SENDER_EMAIL = st.secrets.get("SENDER_EMAIL", "")
 
-# --- BARRE LATÉRALE ---
+# 3. Barre latérale
 with st.sidebar:
     st.header("📂 Importation")
     uploaded_file = st.file_uploader("Upload ton CRM (CSV ou Excel)", type=["xlsx", "csv"])
-    
     if API_KEY and SENDER_EMAIL:
-        st.success("✅ Configuration OK")
+        st.success("✅ Config OK")
     else:
-        st.error("❌ Configuration incomplète (Secrets)")
+        st.error("❌ Config incomplète dans Secrets")
 
-# --- CHARGEMENT ET TRAITEMENT ---
+# 4. Traitement des données
 if uploaded_file:
     try:
-        # Lecture
-        df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
         
-        # Nettoyage des colonnes
+        # Nettoyage des noms de colonnes
         df.columns = [c.strip() for c in df.columns]
         
-        # Mapping intelligent (pour gérer Mail/Email/Lien/Mega)
+        # Mapping automatique (Détecte Mail, Lien, Nom, etc.)
         rename_dict = {}
         for col in df.columns:
             c_low = col.lower()
@@ -44,11 +45,11 @@ if uploaded_file:
         df.rename(columns=rename_dict, inplace=True)
 
         if 'Mail' not in df.columns or 'Lien' not in df.columns or 'Nom' not in df.columns:
-            st.error("⚠️ Il manque des colonnes essentielles (Nom, Mail, Lien) dans ton fichier.")
+            st.error("⚠️ Colonnes 'Nom', 'Mail' et 'Lien' obligatoires.")
         else:
             st.sidebar.success(f"💎 {len(df)} contacts chargés")
 
-            # --- SÉLECTION ---
+            # --- SÉLECTION DES CIBLES ---
             st.subheader("🚀 1. Sélectionne tes cibles")
             col1, col2 = st.columns(2)
             
@@ -87,46 +88,14 @@ if uploaded_file:
                 
                 st.info("💡 Utilise {nom}, {instagram}, {style} ou {lien} pour personnaliser.")
 
-                # --- ENVOI ---
-               if st.button(f"🔥 ENVOYER À {len(final_selection)} ARTISTES"):
+                # --- BOUTON D'ENVOI (BIEN ALIGNÉ) ---
+                if st.button(f"🔥 ENVOYER À {len(final_selection)} ARTISTES"):
                     sg = SendGridAPIClient(API_KEY)
                     progress_bar = st.progress(0)
                     
                     for i, (idx, row) in enumerate(final_selection.iterrows()):
                         try:
-                            # 1. Sécurité pour trouver l'email même si le nom de colonne change
-                            # On cherche 'Mail' (notre nom nettoyé) ou 'Email' ou 'email'
-                            dest_email = row.get('Mail') or row.get('Email') or row.get('email')
+                            # Sécurité Email
+                            dest_email = row.get('Mail')
                             
-                            if not dest_email or pd.isna(dest_email):
-                                st.error(f"❌ Pas d'adresse email trouvée pour {row.get('Nom', 'Inconnu')}")
-                                continue
-
-                            # 2. Remplacement des balises dans le corps
-                            msg_final = email_body.format(
-                                nom=str(row.get('Nom', '')),
-                                instagram=str(row.get('Instagram', '')),
-                                style=str(row.get('Style', '')),
-                                lien=str(row.get('Lien', ''))
-                            )
-                            
-                            # 3. Préparation du mail
-                            mail = Mail(
-                                from_email=SENDER_EMAIL,
-                                to_emails=str(dest_email),
-                                subject=subject.format(nom=row.get('Nom', ''), style=row.get('Style','')),
-                                plain_text_content=msg_final
-                            )
-                            
-                            # 4. Envoi via SendGrid
-                            sg.send(mail)
-                            st.write(f"✅ Envoyé avec succès à : **{row.get('Nom')}** ({dest_email})")
-                            
-                        except Exception as e:
-                            st.error(f"❌ Erreur lors de l'envoi à {row.get('Nom')} : {e}")
-                        
-                        # Mise à jour de la barre
-                        progress_bar.progress((i + 1) / len(final_selection))
-                        
-                    st.success("Opération terminée !")
-                    st.balloons()
+                            if not dest_email or pd.isna(dest_email
