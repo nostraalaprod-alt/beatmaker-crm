@@ -30,10 +30,8 @@ if uploaded_file:
         else:
             df = pd.read_excel(uploaded_file)
         
-        # Nettoyage des noms de colonnes
         df.columns = [c.strip() for c in df.columns]
         
-        # Mapping automatique (Détecte Mail, Lien, Nom, etc.)
         rename_dict = {}
         for col in df.columns:
             c_low = col.lower()
@@ -49,7 +47,6 @@ if uploaded_file:
         else:
             st.sidebar.success(f"💎 {len(df)} contacts chargés")
 
-            # --- SÉLECTION DES CIBLES ---
             st.subheader("🚀 1. Sélectionne tes cibles")
             col1, col2 = st.columns(2)
             
@@ -65,7 +62,6 @@ if uploaded_file:
             final_selection = df[df['Nom'].isin(selected_names)]
 
             if not final_selection.empty:
-                # --- TEMPLATES ---
                 templates = {
                     "🎯 Premier Contact": {
                         "sujet": "Pack Exclu - [Ton Nom] x {nom}",
@@ -88,14 +84,37 @@ if uploaded_file:
                 
                 st.info("💡 Utilise {nom}, {instagram}, {style} ou {lien} pour personnaliser.")
 
-                # --- BOUTON D'ENVOI (BIEN ALIGNÉ) ---
                 if st.button(f"🔥 ENVOYER À {len(final_selection)} ARTISTES"):
                     sg = SendGridAPIClient(API_KEY)
                     progress_bar = st.progress(0)
                     
                     for i, (idx, row) in enumerate(final_selection.iterrows()):
                         try:
-                            # Sécurité Email
                             dest_email = row.get('Mail')
+                            if not dest_email or pd.isna(dest_email):
+                                st.error(f"❌ Pas d'email pour {row.get('Nom')}")
+                                continue
+
+                            msg_final = email_body.format(
+                                nom=str(row.get('Nom', '')),
+                                instagram=str(row.get('Instagram', '')),
+                                style=str(row.get('Style', '')),
+                                lien=str(row.get('Lien', ''))
+                            )
                             
-                          if not dest_email or pd.isna(dest_email):
+                            subj_final = subject.format(
+                                nom=str(row.get('Nom', '')),
+                                style=str(row.get('Style', ''))
+                            )
+                            
+                            mail = Mail(
+                                from_email=SENDER_EMAIL,
+                                to_emails=str(dest_email),
+                                subject=subj_final,
+                                plain_text_content=msg_final
+                            )
+                            sg.send(mail)
+                            st.write(f"✅ Envoyé à : **{row.get('Nom')}**")
+                            
+                        except Exception as e:
+                            st.error(f"❌ Erreur pour {row.get('Nom')} :
