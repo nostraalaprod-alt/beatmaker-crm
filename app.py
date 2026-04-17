@@ -72,19 +72,34 @@ if uploaded_file:
                 st.markdown("---")
                 st.subheader("📧 2. Rédige ton message personnalisé")
                 
-                # Interface de rédaction
-                subject = st.text_input("Objet de l'email", "Pack Exclusif - [Ton Nom]")
-                
-                default_msg = (
-                    "Salut {nom},\n\n"
-                    "J'ai vu ce que tu fais sur Instagram ({instagram}), j'aime beaucoup l'énergie.\n\n"
-                    "J'ai préparé un pack {style} spécifiquement pour toi.\n\n"
-                    "Tu peux écouter les exclus ici : {lien}\n\n"
-                    "Dis-moi ce que t'en penses !"
-                )
-                
-                email_body = st.text_area("Message (utilise les balises entre accolades)", value=default_msg, height=250)
-                
+              # --- DICTIONNAIRE DE TEMPLATES ---
+        templates = {
+            "🎯 Premier Contact (Pro)": {
+                "sujet": "Pack Exclu - [Ton Nom] x {nom}",
+                "corps": "Salut {nom},\n\nJ'ai vu ce que tu fais sur Instagram ({instagram}), j'aime beaucoup l'énergie.\n\nJ'ai préparé un pack {style} spécifiquement pour toi.\n\nTu peux écouter les exclus ici : {lien}\n\nDis-moi si quelque chose te parle !"
+            },
+            "🔥 Relance (Rapide)": {
+                "sujet": "Petit rappel / Pack {style}",
+                "corps": "Yo {nom},\n\nJe te relance juste pour savoir si tu avais eu le temps de jeter une oreille au pack que je t'ai envoyé.\n\nLe lien est toujours ici : {lien}\n\nBonne session !"
+            },
+            "🎤 Spécial Studio (Urgent)": {
+                "sujet": "Exclu pour ta session d'aujourd'hui",
+                "corps": "Salut {nom},\n\nJe t'envoie ça en direct du studio. Je pense que ce pack {style} va coller direct à ta vibe du moment.\n\nÉcoute ça : {lien}\n\nFais-moi signe si tu poses dessus !"
+            }
+        }
+
+        st.divider()
+        st.subheader("📧 2. Rédige ton message personnalisé")
+
+        # Menu déroulant pour choisir le template
+        choix_template = st.selectbox("Choisir un modèle de message", list(templates.keys()))
+        selected_t = templates[choix_template]
+
+        # Champs de saisie
+        subject = st.text_input("Objet de l'email", value=selected_t["sujet"])
+        email_body = st.text_area("Message", value=selected_t["corps"], height=250)
+
+        st.info("💡 **Astuces :** Les balises `{nom}`, `{instagram}`, `{style}` et `{lien}` seront remplacées automatiquement.")
                 st.info("💡 **Astuces :** Utilise `{nom}`, `{instagram}`, `{style}` ou `{lien}` pour que le code les remplace automatiquement par les infos de ton tableau.")
 
                 # --- BOUTON D'ENVOI ---
