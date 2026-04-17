@@ -88,11 +88,21 @@ if uploaded_file:
                 st.info("💡 Utilise {nom}, {instagram}, {style} ou {lien} pour personnaliser.")
 
                 # --- ENVOI ---
-                if st.button(f"🔥 ENVOYER À {len(final_selection)} ARTISTES"):
+               if st.button(f"🔥 ENVOYER À {len(final_selection)} ARTISTES"):
                     sg = SendGridAPIClient(API_KEY)
+                    progress_bar = st.progress(0)
+                    
                     for i, (idx, row) in enumerate(final_selection.iterrows()):
                         try:
-                            # Remplacement des balises
+                            # 1. Sécurité pour trouver l'email même si le nom de colonne change
+                            # On cherche 'Mail' (notre nom nettoyé) ou 'Email' ou 'email'
+                            dest_email = row.get('Mail') or row.get('Email') or row.get('email')
+                            
+                            if not dest_email or pd.isna(dest_email):
+                                st.error(f"❌ Pas d'adresse email trouvée pour {row.get('Nom', 'Inconnu')}")
+                                continue
+
+                            # 2. Remplacement des balises dans le corps
                             msg_final = email_body.format(
                                 nom=str(row.get('Nom', '')),
                                 instagram=str(row.get('Instagram', '')),
@@ -100,21 +110,23 @@ if uploaded_file:
                                 lien=str(row.get('Lien', ''))
                             )
                             
+                            # 3. Préparation du mail
                             mail = Mail(
                                 from_email=SENDER_EMAIL,
-                                to_emails=str(row['Mail']),
-                                subject=subject.format(nom=row['Nom'], style=row.get('Style','')),
+                                to_emails=str(dest_email),
+                                subject=subject.format(nom=row.get('Nom', ''), style=row.get('Style','')),
                                 plain_text_content=msg_final
                             )
+                            
+                            # 4. Envoi via SendGrid
                             sg.send(mail)
-                            st.write(f"✅ Envoyé à {row['Nom']}")
+                            st.write(f"✅ Envoyé avec succès à : **{row.get('Nom')}** ({dest_email})")
+                            
                         except Exception as e:
-                            st.error(f"❌ Erreur pour {row['Nom']} : {e}")
+                            st.error(f"❌ Erreur lors de l'envoi à {row.get('Nom')} : {e}")
+                        
+                        # Mise à jour de la barre
+                        progress_bar.progress((i + 1) / len(final_selection))
+                        
+                    st.success("Opération terminée !")
                     st.balloons()
-            else:
-                st.warning("Sélectionne au moins un artiste.")
-
-    except Exception as e:
-        st.error(f"Erreur fichier : {e}")
-else:
-    st.info("👋 Upload ton fichier pour commencer.")
